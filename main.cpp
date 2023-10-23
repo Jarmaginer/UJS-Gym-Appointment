@@ -1,8 +1,10 @@
 #include <iostream>
+#include <windows.h>
+#include <conio.h> // Add this header file
+#include <stdlib.h>
 #include <string>
 #include <curl/curl.h>
 #include <vector>
-#include <windows.h>
 #include <regex>
 #include <iomanip>
 #include <ctime>
@@ -10,9 +12,22 @@
 #include <locale>
 #include <codecvt>
 
-
 #define LOGIN_URL (std::string)"https://pass.ujs.edu.cn/cas/login?service=http%3A%2F%2Fgym.ujs.edu.cn%2Findex.php%2Findex%2Findex%2Flogin%3Ftype%3D1"
-#define LOGIN_URL2 (std::string)"http://gym.ujs.edu.cn/index.php/index/index/login?type=1&ticket="
+
+std::string GBKToUTF8(const std::string &gbkString) {
+    int len = MultiByteToWideChar(CP_ACP, 0, gbkString.c_str(), -1, NULL, 0);
+    wchar_t *wideStr = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, gbkString.c_str(), -1, wideStr, len);
+
+    len = WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, NULL, 0, NULL, NULL);
+    char *utf8Str = new char[len];
+    WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, utf8Str, len, NULL, NULL);
+
+    std::string result(utf8Str);
+    delete[] wideStr;
+    delete[] utf8Str;
+    return result;
+}
 
 
 inline size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response) {
@@ -139,12 +154,23 @@ std::string getDate() {
     return formattedDate;
 }
 
+inline std::string toTwoDigits(int num) {
+    if (num >= 1 && num <= 9) {
+        std::ostringstream oss;
+        oss << "0" << num;
+        return oss.str();
+    } else {
+        return std::to_string(num);
+    }
+}
+
+
 class Gym{
 public:
-    std::string areaid;
+    std::string areaid = GBKToUTF8("未设置");
     std::string cookie;
-    std::string token;
-    std::string dateid;
+    std::string token = GBKToUTF8("未登录，请先登录");
+    std::string dateid = GBKToUTF8("未设置");
     
     std::vector<std::string> headers = {
         "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -202,7 +228,7 @@ public:
         "Upgrade-Insecure-Requests: 1",
         "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.57"
     };
-    Gym(std::string cookie){
+    void setCookie(std::string cookie){
 
         this->cookie = cookie;
     }
@@ -219,31 +245,7 @@ std::string extractToken(const std::string& input) {
         return ""; 
     }
 
-std::string toTwoDigits(int num) {
-    if (num >= 1 && num <= 9) {
-        std::ostringstream oss;
-        oss << "0" << num;
-        return oss.str();
-    } else {
-        return std::to_string(num);
-    }
-}
 
-
-std::string GBKToUTF8(const std::string &gbkString) {
-    int len = MultiByteToWideChar(CP_ACP, 0, gbkString.c_str(), -1, NULL, 0);
-    wchar_t *wideStr = new wchar_t[len];
-    MultiByteToWideChar(CP_ACP, 0, gbkString.c_str(), -1, wideStr, len);
-
-    len = WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, NULL, 0, NULL, NULL);
-    char *utf8Str = new char[len];
-    WideCharToMultiByte(CP_UTF8, 0, wideStr, -1, utf8Str, len, NULL, NULL);
-
-    std::string result(utf8Str);
-    delete[] wideStr;
-    delete[] utf8Str;
-    return result;
-}
 
 std::vector<std::string> extractArea(const std::string& input) {
     std::regex pattern("area-id=\"(\\d+)\">(.*?)<");
@@ -273,6 +275,7 @@ std::vector<std::string> extractArea(const std::string& input) {
 
 
     std::string Login(){
+        std::cout << "正在尝试登录.... " << std::endl;
         headers.push_back((std::string)"Cookie: CASTGC="+cookie);
         std::string response = GET(LOGIN_URL, headers);
         this->token = extractToken(response);
@@ -384,24 +387,94 @@ std::string findAvailableTimes(const std::string& jsonString) {
         return response;
     }
 
+    std::string GetInf(){
+        headers2.push_back((std::string)"Cookie: PHPSESSID="+token);
+        std::string URL = "http://gym.ujs.edu.cn/index.php/index/user/index.html?page=1";
+        std::string response = GET(URL,headers2);
+        return response;
+    }
 };
 
 
 
+using namespace std;
 
+
+void gotoxy(int x, int y) {
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
-    Gym gym("TGT-(你的cas token信息)-cas");
-    std::cout << "---------------------------------------" << std::endl;
-    std::cout << gym.Login() << std::endl;
-    std::cout << "---------------------------------------" << std::endl;
-    gym.PrintAreaID();
-    std::cout << "---------------------------------------" << std::endl;
-    gym.setAreaID("45");
-    gym.setDateID("14197");
+    string cas_cookie;
 
-   std::cout << gym.Pay() << std::endl;
-    std::cin.get();
+    const int numOptions = 6;
+    string options[numOptions] = {GBKToUTF8("开抢"),GBKToUTF8("登录"), GBKToUTF8("设置待抢场馆信息"),GBKToUTF8("获取场地信息"),GBKToUTF8("获取预约信息"), GBKToUTF8("退出程序")};
+    int selectedOption = 1;
+    Gym gym;
+    while (true) {
+        system("cls"); // 清屏
+        cout << "token="<<gym.token <<"  areaid="<< gym.areaid <<"  dataid="<< gym.dateid  << endl;
+        cout << "------------------------------------- " << endl;
+        // 输出选项
+        for (int i = 0; i < numOptions; ++i) {
+            if (i == selectedOption) {
+                cout << "-> " << options[i] << endl;
+            } else {
+                cout << "   " << options[i] << endl;
+            }
+        }
+
+        // 等待用户输入
+        char input = _getch();
+
+        // 处理用户输入
+        switch (input) {
+            case 72: // 上箭头
+                selectedOption = (selectedOption - 1 + numOptions) % numOptions;
+                break;
+            case 80: // 下箭头
+                selectedOption = (selectedOption + 1) % numOptions;
+                break;
+            case 13: // 回车键
+                system("cls");
+                switch (selectedOption){
+                    case 0:
+                        gym.Pay();
+                        break;
+                    case 1:
+                        cout << GBKToUTF8("正在登录...\n\n提供你的cas-cookie：");
+                        cin >> cas_cookie;
+                        gym.setCookie(cas_cookie);
+                        gym.Login();
+                        break;
+                    case 3:
+                        gym.PrintAreaID();
+                        break;
+                    case 4:
+                        cout << gym.GetInf() << endl;
+                        break;
+                    case 2:
+                        cout << GBKToUTF8("设置area_id和data_id\n") << endl;
+                        cout << "area_id: "<< endl;
+                        cin >> gym.areaid;
+                        gym.setAreaID(gym.areaid);
+                        cout << "data_id: " << endl;
+                        cin >> gym.dateid;
+                        gym.setDateID(gym.dateid);
+
+                        break;
+                    case 5:
+                        return 0;
+                        break;
+                }
+                _getch(); // 等待用户按任意键继续
+                break;
+        }
+    }
+
     return 0;
 }

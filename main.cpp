@@ -1,6 +1,6 @@
 #include <iostream>
 #include <windows.h>
-#include <conio.h>
+#include <conio.h> // Add this header file
 #include <stdlib.h>
 #include <string>
 #include <curl/curl.h>
@@ -367,14 +367,51 @@ std::string findAvailableTimes(const std::string& jsonString) {
         return 0;
     }
 
-    int PrintAreaID(){
-        headers2.push_back((std::string)"Cookie: PHPSESSID="+token);
-        std::string URL = "http://gym.ujs.edu.cn/index.php/index/yuyue/list.html?item_id=3";
-        std::string response = GET(URL,headers2);
-        SetConsoleOutputCP(CP_UTF8);
+    int PrintAreaID() {
+        headers2.push_back((std::string)"Cookie: PHPSESSID=" + token);
+        //std::string URL = "http://gym.ujs.edu.cn/index.php/index/yuyue/list.html?item_id=3";
+        //std::string response = GET(URL, headers2);
+        //SetConsoleOutputCP(CP_UTF8);
+
+        std::string response = GBKToUTF8(R"(<div class="office-time-con" style="width: 1000px">
+                                        <div class="fenhang">
+                                          <div class="office-time-item area_  checked" area-id="4">一楼塑胶1</div>
+                                          <div class="office-time-item area_" area-id="5">一楼塑胶2</div>
+                                          <div class="office-time-item area_" area-id="6">一楼塑胶3</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="7">一楼木质4</div>
+                                          <div class="office-time-item area_" area-id="8">一楼塑胶5</div>
+                                          <div class="office-time-item area_" area-id="9">一楼塑胶6</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="10">一楼塑胶7</div>
+                                          <div class="office-time-item area_" area-id="11">一楼木质8</div>
+                                          <div class="office-time-item area_" area-id="12">二楼塑胶1</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="13">二楼塑胶2</div>
+                                          <div class="office-time-item area_" area-id="14">二楼塑胶3</div>
+                                          <div class="office-time-item area_" area-id="15">二楼塑胶4</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="16">二楼塑胶5</div>
+                                          <div class="office-time-item area_" area-id="17">二楼塑胶6</div>
+                                          <div class="office-time-item area_" area-id="18">二楼塑胶7</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="19">二楼塑胶8</div>
+                                          <div class="office-time-item area_" area-id="20">二楼塑胶9</div>
+                                          <div class="office-time-item area_" area-id="21">二楼塑胶10</div>
+                                          </div>
+                                          <div class="fenhang">
+                                          <div class="office-time-item area_" area-id="22">二楼塑胶11</div>
+                                          <div class="office-time-item area_" area-id="23">二楼塑胶12</div>
+                                    </div>
+              </div>)");
         std::vector<std::string> matches = extractArea(response);
         for (const auto& match : matches) {
-        std::cout << match << std::endl;
+            std::cout << match << std::endl;
         }
         return 0;
     }
